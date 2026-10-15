@@ -198,6 +198,22 @@
             <label class="block mb-1 text-gray-300 font-medium">Custom Call to Action Text</label>
             <input type="text" id="cfg-cashapp-text" value="Support via CashApp" oninput="updateWidgetConfig()" class="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-400">
           </div>
+
+          <!-- Custom QR Code Upload & Management -->
+          <div class="pt-2 border-t border-white/10 space-y-2">
+            <label class="block text-gray-200 font-medium">QR Code Image</label>
+            <div class="flex gap-2 items-center">
+              <label class="flex-1 cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg text-center font-bold text-xs transition shadow flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Upload Custom QR
+                <input type="file" id="cfg-qr-upload" accept="image/*" onchange="handleQRUpload(event)" class="hidden">
+              </label>
+              <button id="btn-remove-qr" onclick="removeCustomQR()" class="hidden px-3 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-lg font-bold text-xs transition">
+                Reset
+              </button>
+            </div>
+            <p id="qr-status-text" class="text-[10px] text-gray-400">Using auto-generated QR code.</p>
+          </div>
         </div>
       </div>
 
@@ -241,6 +257,21 @@
         <div class="sm:col-span-2">
           <label class="block mb-1 text-gray-300 font-medium">Widget Title</label>
           <input type="text" id="cfg-widget-title" value="Stream Goal Milestones" oninput="updateWidgetConfig()" class="w-full bg-black/40 border border-white/20 rounded-lg p-2 text-white focus:outline-none focus:border-purple-400">
+        </div>
+
+        <div class="sm:col-span-2 bg-black/30 p-2.5 rounded-lg border border-white/10 flex items-center justify-between">
+          <label for="cfg-show-raised" class="text-gray-200 font-medium cursor-pointer">Show Total Raised Badge</label>
+          <input type="checkbox" id="cfg-show-raised" checked onchange="updateWidgetConfig()" class="w-4 h-4 accent-purple-500 rounded cursor-pointer">
+        </div>
+
+        <div class="sm:col-span-2 bg-black/30 p-2.5 rounded-lg border border-white/10 flex items-center justify-between">
+          <label for="cfg-show-bar" class="text-gray-200 font-medium cursor-pointer">Show Progress / Donation Bar</label>
+          <input type="checkbox" id="cfg-show-bar" checked onchange="updateWidgetConfig()" class="w-4 h-4 accent-purple-500 rounded cursor-pointer">
+        </div>
+
+        <div class="sm:col-span-2 bg-black/30 p-2.5 rounded-lg border border-white/10 flex items-center justify-between">
+          <label for="cfg-show-milestones" class="text-gray-200 font-medium cursor-pointer">Show Milestones List on Widget</label>
+          <input type="checkbox" id="cfg-show-milestones" checked onchange="updateWidgetConfig()" class="w-4 h-4 accent-purple-500 rounded cursor-pointer">
         </div>
 
         <div>
@@ -311,14 +342,14 @@
         </div>
 
         <!-- Progress Bar -->
-        <div class="progress-bar-container my-3 shadow-inner">
+        <div id="progress-bar-section" class="progress-bar-container my-3 shadow-inner">
           <div id="disp-bar-fill" class="progress-bar-fill w-0"></div>
         </div>
 
         <!-- CashApp Banner Widget Element -->
         <div id="cashapp-banner" class="hidden my-3 p-3 bg-gradient-to-r from-emerald-950/90 to-teal-950/90 rounded-xl border border-emerald-500/40 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-black text-base shadow">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-black text-base shadow shrink-0">
               $
             </div>
             <div>
@@ -327,9 +358,9 @@
             </div>
           </div>
           <!-- Scannable QR Container -->
-          <div id="cashapp-qr-box" class="bg-white p-1.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center transition hover:scale-105" title="Click to expand QR Code">
+          <div id="cashapp-qr-box" class="bg-white p-2 rounded-xl shadow-lg cursor-pointer flex items-center justify-center transition hover:scale-105 shrink-0 border-2 border-emerald-400" title="Click to expand QR Code">
             <!-- QR Code generated dynamically by qrcode.js -->
-            <div id="qrcode-container" class="w-12 h-12 flex items-center justify-center"></div>
+            <div id="qrcode-container" class="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center"></div>
           </div>
         </div>
 
@@ -341,7 +372,7 @@
         </div>
 
         <!-- Multi-Tier Goal Checklist Display -->
-        <div class="mt-4">
+        <div id="milestones-section" class="mt-4">
           <p class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Milestones Checklist</p>
           <div id="milestones-list" class="space-y-2.5">
             <!-- Dynamic Goals Rendered Here -->
@@ -353,10 +384,18 @@
 
   </div>
 
+  <!-- QR Code Modal Overlay for Zooming/Scanning -->
+  <div id="qr-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel p-6 rounded-2xl max-w-sm w-full text-center relative flex flex-col items-center gap-4 border border-white/20">
+      <button onclick="closeQRModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-lg font-bold px-2 py-1 bg-white/10 rounded-lg">✕</button>
+      <h3 class="font-bold text-lg text-white">Scan to Tip via CashApp</h3>
+      <div id="modal-qrcode-container" class="bg-white p-4 rounded-xl shadow-2xl flex items-center justify-center w-64 h-64"></div>
+      <p id="modal-cashapp-tag" class="text-emerald-400 font-mono font-black text-lg">$YourCashtag</p>
+      <p class="text-xs text-gray-400">Open your camera or CashApp app to scan and support the stream directly!</p>
+    </div>
+  </div>
+
   <script>
-    /* ===================================================================
-       APPLICATION STATE & DEFAULT GOALS
-       =================================================================== */
     let widgetState = {
       title: "Stream Goal Milestones",
       currentAmount: 120.00,
@@ -366,9 +405,13 @@
       cardBg: "#12121a",
       fontFamily: "'Montserrat', sans-serif",
       height: 20,
+      showRaised: false,
+      showBar: true,
+      showMilestones: true,
       cashAppEnabled: true,
       cashAppTag: "YourCashtag",
       cashAppText: "Support via CashApp",
+      customQRData: null,
       milestones: [
         { id: 1, target: 50, title: "New Gaming Mouse", reached: false },
         { id: 2, target: 100, title: "Horror Game Night Stream", reached: false },
@@ -378,10 +421,9 @@
     };
 
     let audioCtx = null;
+    let qrCodeInstance = null;
+    let modalQRCodeInstance = null;
 
-    /* ===================================================================
-       GLOBAL TAB SWITCHING & UI HELPERS
-       =================================================================== */
     function switchTab(tabName) {
       ['goals', 'cashapp', 'link', 'style'].forEach(t => {
         const contentEl = document.getElementById(`tab-content-${t}`);
@@ -402,9 +444,6 @@
       document.body.classList.toggle('obs-mode');
     }
 
-    /* ===================================================================
-       PROGRESS & GOAL LOGIC
-       =================================================================== */
     function handleNewTip(amount, username) {
       if (isNaN(amount) || amount <= 0) return;
 
@@ -461,9 +500,6 @@
       playCelebrationFanfare();
     }
 
-    /* ===================================================================
-       AUDIO SYNTHESIZER
-       =================================================================== */
     function initAudioContext() {
       if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -519,9 +555,6 @@
       } catch (e) {}
     }
 
-    /* ===================================================================
-       OBS LINK GENERATOR & URL PARAMETER ENGINE
-       =================================================================== */
     function generateOBSLink() {
       const baseUrl = window.location.origin + window.location.pathname;
       const statePayload = {
@@ -533,10 +566,14 @@
         bg: widgetState.cardBg,
         f: widgetState.fontFamily,
         h: widgetState.height,
+        sr: widgetState.showRaised,
+        sb: widgetState.showBar,
+        sm: widgetState.showMilestones,
         ca: widgetState.currentAmount,
         cen: widgetState.cashAppEnabled,
         ctag: widgetState.cashAppTag,
-        ctxt: widgetState.cashAppText
+        ctxt: widgetState.cashAppText,
+        cqr: widgetState.customQRData
       };
 
       const encoded = btoa(encodeURIComponent(JSON.stringify(statePayload)));
@@ -572,10 +609,14 @@
           if (decoded.bg) widgetState.cardBg = decoded.bg;
           if (decoded.f) widgetState.fontFamily = decoded.f;
           if (decoded.h) widgetState.height = decoded.h;
+          if (decoded.sr !== undefined) widgetState.showRaised = decoded.sr;
+          if (decoded.sb !== undefined) widgetState.showBar = decoded.sb;
+          if (decoded.sm !== undefined) widgetState.showMilestones = decoded.sm;
           if (decoded.ca !== undefined) widgetState.currentAmount = decoded.ca;
           if (decoded.cen !== undefined) widgetState.cashAppEnabled = decoded.cen;
           if (decoded.ctag) widgetState.cashAppTag = decoded.ctag;
           if (decoded.ctxt) widgetState.cashAppText = decoded.ctxt;
+          if (decoded.cqr) widgetState.customQRData = decoded.cqr;
 
           if (Array.isArray(decoded.m)) {
             widgetState.milestones = decoded.m.map((item, idx) => ({
@@ -657,251 +698,305 @@
       if (document.getElementById('cfg-card-bg')) document.getElementById('cfg-card-bg').value = widgetState.cardBg;
       if (document.getElementById('cfg-font')) document.getElementById('cfg-font').value = widgetState.fontFamily;
       if (document.getElementById('cfg-height')) document.getElementById('cfg-height').value = widgetState.height;
+      if (document.getElementById('cfg-show-raised')) document.getElementById('cfg-show-raised').checked = widgetState.showRaised;
+      if (document.getElementById('cfg-show-bar')) document.getElementById('cfg-show-bar').checked = widgetState.showBar;
+      if (document.getElementById('cfg-show-milestones')) document.getElementById('cfg-show-milestones').checked = widgetState.showMilestones;
       if (document.getElementById('cfg-cashapp-enabled')) document.getElementById('cfg-cashapp-enabled').checked = widgetState.cashAppEnabled;
       if (document.getElementById('cfg-cashapp-tag')) document.getElementById('cfg-cashapp-tag').value = widgetState.cashAppTag;
       if (document.getElementById('cfg-cashapp-text')) document.getElementById('cfg-cashapp-text').value = widgetState.cashAppText;
+      updateQRStatusDisplay();
     }
 
-    /* ===================================================================
-       DYNAMIC GOAL MANAGEMENT (ADD, EDIT, REORDER, REMOVE)
-       =================================================================== */
+    function handleQRUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        widgetState.customQRData = e.target.result;
+        updateQRStatusDisplay();
+        renderWidget();
+        generateOBSLink();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeCustomQR() {
+      widgetState.customQRData = null;
+      const uploadInput = document.getElementById('cfg-qr-upload');
+      if (uploadInput) uploadInput.value = '';
+      updateQRStatusDisplay();
+      renderWidget();
+      generateOBSLink();
+    }
+
     function renderEditorMilestoneList() {
-      const editorList = document.getElementById('editor-milestone-list');
-      if (!editorList) return;
-      editorList.innerHTML = '';
+      const container = document.getElementById('editor-milestone-list');
+      if (!container) return;
 
-      widgetState.milestones.forEach((m, idx) => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/10 text-xs';
-        
-        row.innerHTML = `
-          <!-- Order Handles -->
-          <div class="flex flex-col gap-0.5 text-[10px]">
-            <button onclick="moveMilestone(${idx}, -1)" ${idx === 0 ? 'disabled class="text-gray-600"' : 'class="text-gray-300 hover:text-white"'}>▲</button>
-            <button onclick="moveMilestone(${idx}, 1)" ${idx === widgetState.milestones.length - 1 ? 'disabled class="text-gray-600"' : 'class="text-gray-300 hover:text-white"'}>▼</button>
-          </div>
-
-          <!-- Target Amount Input -->
-          <div class="relative">
-            <span class="absolute left-2 top-1.5 text-gray-400 font-bold">$</span>
-            <input type="number" value="${m.target}" onchange="updateMilestoneItem(${idx}, 'target', this.value)" class="w-20 pl-5 pr-1 py-1 bg-black/60 border border-white/20 rounded text-white font-bold focus:outline-none focus:border-purple-400">
-          </div>
-
-          <!-- Goal Title Input -->
-          <input type="text" value="${m.title}" onchange="updateMilestoneItem(${idx}, 'title', this.value)" class="flex-1 bg-black/60 border border-white/20 rounded px-2 py-1 text-white focus:outline-none focus:border-purple-400" placeholder="Goal Title">
-
-          <!-- Remove Goal Button (Trash Icon) -->
-          <button onclick="removeMilestoneTier(${idx})" title="Remove Goal" class="p-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-200 rounded transition border border-red-500/30">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-            </svg>
-          </button>
-        `;
-        editorList.appendChild(row);
-      });
-    }
-
-    function updateMilestoneItem(index, key, val) {
-      if (key === 'target') widgetState.milestones[index].target = parseFloat(val) || 0;
-      if (key === 'title') widgetState.milestones[index].title = val;
+      container.innerHTML = '';
       
+      // Sort milestones by target amount for clean ordering
       widgetState.milestones.sort((a, b) => a.target - b.target);
-      
-      renderEditorMilestoneList();
-      renderWidget();
-    }
 
-    function moveMilestone(index, direction) {
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= widgetState.milestones.length) return;
-      
-      const temp = widgetState.milestones[index];
-      widgetState.milestones[index] = widgetState.milestones[newIndex];
-      widgetState.milestones[newIndex] = temp;
-
-      renderEditorMilestoneList();
-      renderWidget();
+      widgetState.milestones.forEach((item, idx) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = "flex items-center gap-2 p-2 bg-black/40 rounded-xl border border-white/10 text-xs";
+        
+        itemEl.innerHTML = `
+          <div class="font-bold text-gray-400 w-4 text-center">${idx + 1}</div>
+          <div class="flex-1 space-y-1">
+            <input type="text" value="${item.title.replace(/"/g, '&quot;')}" onchange="updateMilestoneItem(${item.id}, 'title', this.value)" placeholder="Goal Title" class="w-full bg-black/50 border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-purple-400">
+            <div class="flex items-center gap-1">
+              <span class="text-emerald-400 font-bold">$</span>
+              <input type="number" value="${item.target}" min="1" step="1" onchange="updateMilestoneItem(${item.id}, 'target', this.value)" class="w-full bg-black/50 border border-white/10 rounded px-2 py-1 text-white font-mono text-xs focus:outline-none focus:border-purple-400">
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <button onclick="removeMilestoneTier(${item.id})" title="Delete Goal" class="p-1 bg-red-600/60 hover:bg-red-500 text-white rounded text-xs transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+          </div>
+        `;
+        container.appendChild(itemEl);
+      });
     }
 
     function addNewMilestoneTier() {
-      const lastTarget = widgetState.milestones.length > 0 
-        ? widgetState.milestones[widgetState.milestones.length - 1].target + 100 
-        : 100;
-      
+      const maxTarget = widgetState.milestones.reduce((max, m) => Math.max(max, m.target), 0);
+      const newId = Date.now();
       widgetState.milestones.push({
-        id: Date.now(),
-        target: lastTarget,
-        title: "New Goal Item",
+        id: newId,
+        target: maxTarget + 100 || 100,
+        title: "New Stream Goal",
         reached: false
       });
-
-      widgetState.milestones.sort((a, b) => a.target - b.target);
-
-      renderEditorMilestoneList();
-      renderWidget();
-    }
-
-    function removeMilestoneTier(index) {
-      widgetState.milestones.splice(index, 1);
-      renderEditorMilestoneList();
-      renderWidget();
-    }
-
-    /* ===================================================================
-       UI & RENDERING ENGINE
-       =================================================================== */
-    let qrCodeInstance = null;
-
-    function renderWidget() {
       checkMilestonesProgress();
+      renderEditorMilestoneList();
+      renderWidget();
+      generateOBSLink();
+    }
 
-      widgetState.milestones.sort((a, b) => a.target - b.target);
+    function updateMilestoneItem(id, field, value) {
+      const targetItem = widgetState.milestones.find(m => m.id === id);
+      if (!targetItem) return;
 
-      const maxTarget = widgetState.milestones.length > 0 
-        ? widgetState.milestones[widgetState.milestones.length - 1].target 
-        : 100;
-
-      const rawPercentage = (widgetState.currentAmount / maxTarget) * 100;
-      const cappedPercentage = Math.min(100, Math.max(0, rawPercentage));
-
-      const titleEl = document.getElementById('disp-widget-title');
-      const totalEl = document.getElementById('disp-current-total');
-      const fillEl = document.getElementById('disp-bar-fill');
-
-      if (titleEl) titleEl.innerText = widgetState.title;
-      if (totalEl) totalEl.innerText = '$' + widgetState.currentAmount.toFixed(2);
-      if (fillEl) fillEl.style.width = cappedPercentage + '%';
-
-      // CashApp Banner rendering & real QR code generation
-      const cashAppBanner = document.getElementById('cashapp-banner');
-      if (cashAppBanner) {
-        if (widgetState.cashAppEnabled) {
-          cashAppBanner.classList.remove('hidden');
-          const textEl = document.getElementById('disp-cashapp-text');
-          const tagEl = document.getElementById('disp-cashapp-tag');
-          if (textEl) textEl.innerText = widgetState.cashAppText || "Support via CashApp";
-          let cleanTag = (widgetState.cashAppTag || "YourCashtag").trim();
-          if (cleanTag.startsWith('$')) cleanTag = cleanTag.substring(1);
-          if (tagEl) tagEl.innerText = '$' + cleanTag;
-
-          // Render real scannable QR code linking directly to CashApp profile
-          const qrContainer = document.getElementById('qrcode-container');
-          if (qrContainer) {
-            qrContainer.innerHTML = '';
-            const cashAppUrl = `https://cash.app/$${cleanTag}`;
-            try {
-              new QRCode(qrContainer, {
-                text: cashAppUrl,
-                width: 48,
-                height: 48,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.L
-              });
-            } catch (e) {
-              qrContainer.innerHTML = '<span class="text-[10px] text-black font-bold">QR</span>';
-            }
-          }
-        } else {
-          cashAppBanner.classList.add('hidden');
-        }
+      if (field === 'target') {
+        const numVal = parseFloat(value);
+        targetItem.target = isNaN(numVal) || numVal < 0 ? 0 : numVal;
+      } else if (field === 'title') {
+        targetItem.title = value;
       }
 
-      const root = document.documentElement;
-      root.style.setProperty('--bar-grad-start', widgetState.gradStart);
-      root.style.setProperty('--bar-grad-end', widgetState.gradEnd);
-      root.style.setProperty('--strike-color', widgetState.strikeColor);
-      root.style.setProperty('--card-bg', widgetState.cardBg);
-      root.style.setProperty('--font-family', widgetState.fontFamily);
-      root.style.setProperty('--bar-height', widgetState.height + 'px');
+      checkMilestonesProgress();
+      renderEditorMilestoneList();
+      renderWidget();
+      generateOBSLink();
+    }
 
-      const listContainer = document.getElementById('milestones-list');
-      if (!listContainer) return;
-      listContainer.innerHTML = '';
-
-      let foundNextActive = false;
-
-      widgetState.milestones.forEach(m => {
-        const isPassed = widgetState.currentAmount >= m.target;
-        let isNextActive = false;
-
-        if (!isPassed && !foundNextActive) {
-          isNextActive = true;
-          foundNextActive = true;
-        }
-
-        const tierProgressPct = Math.min(100, Math.max(0, (widgetState.currentAmount / m.target) * 100));
-
-        const itemEl = document.createElement('div');
-        itemEl.className = `milestone-item glass-panel p-3 rounded-xl flex items-center justify-between border ${
-          isPassed ? 'completed' : isNextActive ? 'active-next' : 'border-white/10'
-        }`;
-
-        itemEl.innerHTML = `
-          <div class="flex items-center gap-3">
-            <div class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-              isPassed ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/40' : isNextActive ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-400'
-            }">
-              ${isPassed ? '✓' : '$'}
-            </div>
-            <div>
-              <p class="milestone-title font-bold text-sm text-white">${m.title}</p>
-              <p class="text-xs text-gray-400 font-medium">${
-                isPassed ? 'Goal Passed!' : '$' + widgetState.currentAmount.toFixed(2) + ' / $' + m.target.toFixed(2) + ' (' + tierProgressPct.toFixed(0) + '%)'
-              }</p>
-            </div>
-          </div>
-          <div class="text-right">
-            <span class="text-xs font-black tracking-wider px-2.5 py-1 rounded-lg ${
-              isPassed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-white/5 text-gray-300'
-            }">
-              $${m.target}
-            </span>
-          </div>
-        `;
-
-        listContainer.appendChild(itemEl);
-      });
-
+    function removeMilestoneTier(id) {
+      widgetState.milestones = widgetState.milestones.filter(m => m.id !== id);
+      checkMilestonesProgress();
+      renderEditorMilestoneList();
+      renderWidget();
       generateOBSLink();
     }
 
     function updateWidgetConfig() {
-      const titleInput = document.getElementById('cfg-widget-title');
-      const fontSelect = document.getElementById('cfg-font');
-      const gradStartInput = document.getElementById('cfg-grad-start');
-      const gradEndInput = document.getElementById('cfg-grad-end');
-      const strikeInput = document.getElementById('cfg-strike-color');
-      const cardBgInput = document.getElementById('cfg-card-bg');
-      const heightInput = document.getElementById('cfg-height');
-      const caEnabledInput = document.getElementById('cfg-cashapp-enabled');
-      const caTagInput = document.getElementById('cfg-cashapp-tag');
-      const caTextInput = document.getElementById('cfg-cashapp-text');
-
-      if (titleInput) widgetState.title = titleInput.value || "Milestones";
-      if (fontSelect) widgetState.fontFamily = fontSelect.value;
-      if (gradStartInput) widgetState.gradStart = gradStartInput.value;
-      if (gradEndInput) widgetState.gradEnd = gradEndInput.value;
-      if (strikeInput) widgetState.strikeColor = strikeInput.value;
-      if (cardBgInput) widgetState.cardBg = cardBgInput.value;
-      if (heightInput) widgetState.height = parseInt(heightInput.value) || 20;
-      if (caEnabledInput) widgetState.cashAppEnabled = caEnabledInput.checked;
-      if (caTagInput) widgetState.cashAppTag = caTagInput.value || "YourCashtag";
-      if (caTextInput) widgetState.cashAppText = caTextInput.value || "Support via CashApp";
+      if (document.getElementById('cfg-widget-title')) widgetState.title = document.getElementById('cfg-widget-title').value;
+      if (document.getElementById('cfg-grad-start')) widgetState.gradStart = document.getElementById('cfg-grad-start').value;
+      if (document.getElementById('cfg-grad-end')) widgetState.gradEnd = document.getElementById('cfg-grad-end').value;
+      if (document.getElementById('cfg-strike-color')) widgetState.strikeColor = document.getElementById('cfg-strike-color').value;
+      if (document.getElementById('cfg-card-bg')) widgetState.cardBg = document.getElementById('cfg-card-bg').value;
+      if (document.getElementById('cfg-font')) widgetState.fontFamily = document.getElementById('cfg-font').value;
+      if (document.getElementById('cfg-height')) widgetState.height = parseInt(document.getElementById('cfg-height').value, 10);
+      if (document.getElementById('cfg-show-raised')) widgetState.showRaised = document.getElementById('cfg-show-raised').checked;
+      if (document.getElementById('cfg-show-bar')) widgetState.showBar = document.getElementById('cfg-show-bar').checked;
+      if (document.getElementById('cfg-show-milestones')) widgetState.showMilestones = document.getElementById('cfg-show-milestones').checked;
+      if (document.getElementById('cfg-cashapp-enabled')) widgetState.cashAppEnabled = document.getElementById('cfg-cashapp-enabled').checked;
+      if (document.getElementById('cfg-cashapp-tag')) widgetState.cashAppTag = document.getElementById('cfg-cashapp-tag').value;
+      if (document.getElementById('cfg-cashapp-text')) widgetState.cashAppText = document.getElementById('cfg-cashapp-text').value;
 
       renderWidget();
+      generateOBSLink();
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    function renderWidget() {
+      // Apply Root Dynamic CSS Variables
+      document.documentElement.style.setProperty('--bar-grad-start', widgetState.gradStart);
+      document.documentElement.style.setProperty('--bar-grad-end', widgetState.gradEnd);
+      document.documentElement.style.setProperty('--strike-color', widgetState.strikeColor);
+      document.documentElement.style.setProperty('--card-bg', widgetState.cardBg);
+      document.documentElement.style.setProperty('--font-family', widgetState.fontFamily);
+      document.documentElement.style.setProperty('--bar-height', widgetState.height + 'px');
+
+      // Update Header & Totals
+      const titleEl = document.getElementById('disp-widget-title');
+      if (titleEl) titleEl.innerText = widgetState.title;
+
+      const currentTotalEl = document.getElementById('disp-current-total');
+      if (currentTotalEl) currentTotalEl.innerText = '$' + widgetState.currentAmount.toFixed(2);
+
+      const totalBadge = document.getElementById('disp-percentage-badge');
+      if (totalBadge) {
+        if (widgetState.showRaised) totalBadge.classList.remove('hidden');
+        else totalBadge.classList.add('hidden');
+      }
+
+      // Progress Bar Calculations
+      const barSection = document.getElementById('progress-bar-section');
+      if (barSection) {
+        if (widgetState.showBar) barSection.classList.remove('hidden');
+        else barSection.classList.add('hidden');
+      }
+
+      const highestGoal = widgetState.milestones.reduce((max, m) => Math.max(max, m.target), 0) || 100;
+      const pct = Math.min(100, Math.max(0, (widgetState.currentAmount / highestGoal) * 100));
+      
+      const barFill = document.getElementById('disp-bar-fill');
+      if (barFill) barFill.style.width = pct + '%';
+
+      // CashApp Banner
+      const cashBanner = document.getElementById('cashapp-banner');
+      if (cashBanner) {
+        if (widgetState.cashAppEnabled) {
+          cashBanner.classList.remove('hidden');
+          document.getElementById('disp-cashapp-text').innerText = widgetState.cashAppText;
+          document.getElementById('disp-cashapp-tag').innerText = '$' + widgetState.cashAppTag;
+          renderQRCode('qrcode-container', widgetState.cashAppTag, 112);
+          
+          const qrBox = document.getElementById('cashapp-qr-box');
+          if (qrBox) qrBox.onclick = openQRModal;
+        } else {
+          cashBanner.classList.add('hidden');
+        }
+      }
+
+      // Milestones List Display
+      const milestonesSection = document.getElementById('milestones-section');
+      const milestonesList = document.getElementById('milestones-list');
+
+      if (milestonesSection && milestonesList) {
+        if (widgetState.showMilestones) {
+          milestonesSection.classList.remove('hidden');
+          milestonesList.innerHTML = '';
+
+          // Sort milestones by target
+          const sorted = [...widgetState.milestones].sort((a, b) => a.target - b.target);
+          let foundActiveNext = false;
+
+          sorted.forEach(m => {
+            const isCompleted = widgetState.currentAmount >= m.target;
+            let activeNextClass = '';
+
+            if (!isCompleted && !foundActiveNext) {
+              activeNextClass = 'active-next';
+              foundActiveNext = true;
+            }
+
+            const mItem = document.createElement('div');
+            mItem.className = `milestone-item p-3 rounded-xl border border-white/10 flex items-center justify-between transition-all ${isCompleted ? 'completed' : ''} ${activeNextClass}`;
+            
+            mItem.innerHTML = `
+              <div class="flex items-center gap-3">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${isCompleted ? 'bg-emerald-500 text-black' : 'bg-white/10 text-gray-300'}">
+                  ${isCompleted ? '✓' : '🎯'}
+                </div>
+                <span class="milestone-title font-bold text-sm text-white">${m.title}</span>
+              </div>
+              <span class="font-mono font-extrabold text-xs px-2.5 py-1 rounded-lg bg-black/40 text-emerald-400 border border-white/10">
+                $${m.target}
+              </span>
+            `;
+            milestonesList.appendChild(mItem);
+          });
+        } else {
+          milestonesSection.classList.add('hidden');
+        }
+      }
+    }
+
+    function updateQRStatusDisplay() {
+      const statusText = document.getElementById('qr-status-text');
+      const removeBtn = document.getElementById('btn-remove-qr');
+      if (widgetState.customQRData) {
+        if (statusText) statusText.innerText = "✨ Using custom uploaded QR code.";
+        if (removeBtn) removeBtn.classList.remove('hidden');
+      } else {
+        if (statusText) statusText.innerText = "Using auto-generated QR code.";
+        if (removeBtn) removeBtn.classList.add('hidden');
+      }
+    }
+    function renderQRCode(containerId, tag, size) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      
+      if (widgetState.customQRData) {
+        const img = document.createElement('img');
+        img.src = widgetState.customQRData;
+        img.alt = "Custom QR Code";
+        img.className = "w-full h-full object-contain rounded";
+        container.appendChild(img);
+        return;
+      }
+
+      const cleanTag = tag.replace('$', '').trim();
+      const cashappUrl = `https://cash.app/$${cleanTag}`;
+
+      const generate = () => {
+        try {
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+              text: cashappUrl,
+              width: size,
+              height: size,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          } else {
+            // Fallback API if qrcode.js library isn't loaded yet
+            const img = document.createElement('img');
+            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(cashappUrl)}`;
+            img.alt = "CashApp QR Code";
+            img.className = "w-full h-full object-contain rounded";
+            container.appendChild(img);
+          }
+        } catch (e) {
+          const img = document.createElement('img');
+          img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(cashappUrl)}`;
+          img.alt = "CashApp QR Code";
+          img.className = "w-full h-full object-contain rounded";
+          container.appendChild(img);
+        }
+      };
+
+      generate();
+    }
+
+    function openQRModal() {
+      const modal = document.getElementById('qr-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        document.getElementById('modal-cashapp-tag').innerText = '$' + widgetState.cashAppTag;
+        renderQRCode('modal-qrcode-container', widgetState.cashAppTag, 240);
+      }
+    }
+
+    function closeQRModal() {
+      const modal = document.getElementById('qr-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    window.onload = function () {
       parseURLParams();
       syncInputsFromState();
       renderEditorMilestoneList();
+      checkMilestonesProgress();
       renderWidget();
-
-      document.body.addEventListener('click', function() {
-        initAudioContext();
-      }, { once: true });
-    });
+      generateOBSLink();
+    };
   </script>
 </body>
 </html>
