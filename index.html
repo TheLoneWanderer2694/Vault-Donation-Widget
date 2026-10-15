@@ -14,6 +14,8 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <!-- QRCode.js Library for real scannable QR codes -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- LZ-String Library for URL Compression -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 
   <style>
     :root {
@@ -576,7 +578,16 @@
         cqr: widgetState.customQRData
       };
 
-      const encoded = btoa(encodeURIComponent(JSON.stringify(statePayload)));
+      let encoded = '';
+      const jsonStr = JSON.stringify(statePayload);
+
+      // Compress string using LZString if available, fallback to btoa
+      if (typeof LZString !== 'undefined') {
+        encoded = 'lz_' + LZString.compressToEncodedURIComponent(jsonStr);
+      } else {
+        encoded = btoa(encodeURIComponent(jsonStr));
+      }
+
       const obsUrl = `${baseUrl}?obs=true&cfg=${encoded}`;
       
       const inputEl = document.getElementById('obs-generated-url');
@@ -601,7 +612,14 @@
       const cfgData = urlParams.get('cfg');
       if (cfgData) {
         try {
-          const decoded = JSON.parse(decodeURIComponent(atob(cfgData)));
+          let jsonStr = '';
+          if (cfgData.startsWith('lz_') && typeof LZString !== 'undefined') {
+            jsonStr = LZString.decompressFromEncodedURIComponent(cfgData.substring(3));
+          } else {
+            jsonStr = decodeURIComponent(atob(cfgData));
+          }
+
+          const decoded = JSON.parse(jsonStr);
           if (decoded.t) widgetState.title = decoded.t;
           if (decoded.gs) widgetState.gradStart = decoded.gs;
           if (decoded.ge) widgetState.gradEnd = decoded.ge;
