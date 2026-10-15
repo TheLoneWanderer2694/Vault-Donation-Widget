@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamElements Multi-Tier Goal Checklist & OBS Widget Generator</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Montserrat:wght@500;700;800;900&family=Poppins:wght@500;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti Library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --bar-grad-start: #7928ca;
+      --bar-grad-end: #ff0080;
+      --bar-bg: rgba(255, 255, 255, 0.12);
+      --accent-glow: rgba(255, 0, 128, 0.4);
+      --card-bg: rgba(18, 18, 26, 0.88);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text-main: #ffffff;
+      --font-family: 'Montserrat', sans-serif;
+      --bar-radius: 10px;
+      --bar-height: 20px;
+      --completed-color: #10b981;
+      --strike-color: #ef4444;
+    }
+
+    body {
+      font-family: var(--font-family);
+      color: var(--text-main);
+      background-color: #0d0d12;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    body.obs-mode {
+      background-color: transparent !important;
+      overflow: hidden;
+    }
+
+    .glass-panel {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .progress-bar-fill {
+      height: var(--bar-height);
+      border-radius: var(--bar-radius);
+      background: linear-gradient(90deg, var(--bar-grad-start), var(--bar-grad-end));
+      box-shadow: 0 0 15px var(--accent-glow);
+      transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    .progress-bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+      animation: shimmer 2.2s infinite linear;
+      border-radius: var(--bar-radius);
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-bar-container {
+      height: var(--bar-height);
+      border-radius: var(--bar-radius);
+      background: var(--bar-bg);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Strikethrough & Completed Milestone Styling */
+    .milestone-item {
+      transition: all 0.4s ease;
+      position: relative;
+    }
+
+    .milestone-item.completed {
+      opacity: 0.65;
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+    }
+
+    .milestone-item.completed .milestone-title {
+      text-decoration: line-through;
+      text-decoration-color: var(--strike-color);
+      text-decoration-thickness: 3px;
+      color: #a1a1aa;
+    }
+
+    .milestone-item.active-next {
+      border-color: rgba(255, 0, 128, 0.6);
+      box-shadow: 0 0 15px var(--accent-glow);
+      background: rgba(255, 255, 255, 0.05);
+      animation: pulseActive 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseActive {
+      0% { border-color: rgba(255, 0, 128, 0.4); }
+      50% { border-color: rgba(255, 0, 128, 0.9); }
+      100% { border-color: rgba(255, 0, 128, 0.4); }
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="select-none transition-colors duration-300">
+
+  <!-- MAIN CONTAINER -->
+  <div id="app-root" class="min-h-screen p-4 md:p-6 flex flex-col lg:flex-row gap-6 justify-center items-start max-w-7xl mx-auto">
+
+    <!-- SIDEBAR CONTROL PANEL -->
+    <div id="control-panel" class="w-full lg:w-[500px] glass-panel rounded-2xl p-5 border border-white/10 text-gray-200 transition-all flex flex-col gap-4">
+      
+      <!-- Panel Header & OBS Toggle -->
+      <div class="flex justify-between items-center pb-3 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          <h3 class="font-bold text-lg text-white">Goal Widget Studio</h3>
+        </div>
+        <button id="btn-toggle-obs" onclick="toggleOBSMode()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition shadow flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+          Preview Mode
+        </button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-semibold text-gray-400">
+        <button id="tab-btn-goals" onclick="switchTab('goals')" class="tab-btn active flex-1 py-2 rounded-lg border border-transparent transition text-center">🎯 Goals List</button>
+        <button id="tab-btn-link" onclick="switchTab('link')" class="tab-btn flex-1 py-2 rounded-lg border border-transparent transition text-center">🔗 OBS Link Generator</button>
+        <button id="tab-btn-style" onclick="switchTab('style')" class="tab-btn flex-1 py-2 rounded-lg border border-transparent transition text-center">🎨 Style & Colors</button>
+      </div>
+
+      <!-- TAB 1: GOALS MANAGER (ADD, EDIT, REORDER, REMOVE) -->
+      <div id="tab-content-goals" class="space-y-4">
+        <div class="flex justify-between items-center">
+          <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Milestone Checklist Editor</label>
+          <button onclick="addNewMilestoneTier()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            Add Goal
+          </button>
+        </div>
+
+        <p class="text-[11px] text-gray-400">Add, edit titles, update target amounts, reorder, or delete goals below. Goals auto-sort by target amount.</p>
+
+        <div id="editor-milestone-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+          <!-- Dynamically populated goal items with move up/down and trash icons -->
+        </div>
+      </div>
+
+      <!-- TAB 2: OBS LINK GENERATOR & EXPORT -->
+      <div id="tab-content-link" class="hidden space-y-4">
+        <div class="bg-gradient-to-br from-purple-900/40 to-pink-900/40 p-4 rounded-xl border border-purple-500/30">
+          <label class="block text-xs font-bold text-purple-200 uppercase tracking-wider mb-1">Generated OBS Browser Source URL</label>
+          <p class="text-[11px] text-gray-300 mb-3">Copy this link into OBS Studio as a Browser Source. All goal goals and customization styles are encoded into the URL.</p>
+          
+          <div class="flex gap-2 mb-3">
+            <input type="text" id="obs-generated-url" readonly class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-xs text-emerald-300 font-mono select-all focus:outline-none">
+            <button onclick="copyOBSLink()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow whitespace-nowrap flex items-center gap-1">
+              📋 Copy Link
+            </button>
+          </div>
+
+          <div class="flex gap-2">
+            <button onclick="openOBSLinkInNewTab()" class="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/10 transition flex justify-center items-center gap-1">
+              ↗️ Open Clean Overlay
+            </button>
+          </div>
+        </div>
+
+        <!-- Configuration Backup JSON -->
+        <div class="bg-black/30 p-3.5 rounded-xl border border-white/10 space-y-2">
+          <label class="block text-xs font-semibold text-gray-300">Backup / Restore Goal Config (JSON)</label>
+          <div class="flex gap-2">
+            <button onclick="exportConfigJSON()" class="flex-1 py-1.5 bg-indigo-600/80 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition">Export Config</button>
+            <button onclick="importConfigJSON()" class="flex-1 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-bold transition">Import Config</button>
+          </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast-message" class="hidden p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl text-center animate-pulse">
+          Link copied to clipboard!
+        </div>
+      </div>
+
+      <!-- TAB 3: STYLING & CUSTOMIZATION -->
+      <div id="tab-content-style" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div class="sm:col-span-2">
+          <label class="block mb-1 text-gray-300 font-medium">Widget Title</label>
+          <input type="text" id="cfg-widget-title" value="Stream Goal Milestones" oninput="updateWidgetConfig()" class="w-full bg-black/40 border border-white/20 rounded-lg p-2 text-white focus:outline-none focus:border-purple-400">
+        </div>
+
+        <div>
+          <label class="block mb-1 text-gray-300 font-medium">Font Family</label>
+          <select id="cfg-font" onchange="updateWidgetConfig()" class="w-full bg-black/40 border border-white/20 rounded-lg p-2 text-white focus:outline-none focus:border-purple-400">
+            <option value="'Montserrat', sans-serif">Montserrat</option>
+            <option value="'Inter', sans-serif">Inter</option>
+            <option value="'Poppins', sans-serif">Poppins</option>
+            <option value="'Roboto Mono', monospace">Roboto Mono</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block mb-1 text-gray-300 font-medium">Progress Bar Height (px)</label>
+          <input type="range" id="cfg-height" min="12" max="36" value="20" oninput="updateWidgetConfig()" class="w-full accent-purple-500">
+        </div>
+
+        <div>
+          <label class="block mb-1 text-gray-300 font-medium">Bar Start Color</label>
+          <input type="color" id="cfg-grad-start" value="#7928ca" onchange="updateWidgetConfig()" class="h-9 w-full bg-transparent cursor-pointer rounded border border-white/20 p-1">
+        </div>
+
+        <div>
+          <label class="block mb-1 text-gray-300 font-medium">Bar End Color</label>
+          <input type="color" id="cfg-grad-end" value="#ff0080" onchange="updateWidgetConfig()" class="h-9 w-full bg-transparent cursor-pointer rounded border border-white/20 p-1">
+        </div>
+
+        <div>
+          <label class="block mb-1 text-gray-300 font-medium">Strikethrough Color</label>
+          <input type="color" id="cfg-strike-color" value="#ef4444" onchange="updateWidgetConfig()" class="h-9 w-full bg-transparent cursor-pointer rounded border border-white/20 p-1">
+        </div>
+
+        <div>
+          <label class="block mb-1 text-gray-300 font-medium">Card Background Color</label>
+          <input type="color" id="cfg-card-bg" value="#12121a" onchange="updateWidgetConfig()" class="h-9 w-full bg-transparent cursor-pointer rounded border border-white/20 p-1">
+        </div>
+      </div>
+
+      <!-- TEST BENCH / DONATION SIMULATOR -->
+      <div class="mt-2 pt-4 border-t border-white/10 bg-white/5 p-3 rounded-xl">
+        <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Live Tip Test Bench</label>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="simulateTip(5)" class="flex-1 py-1.5 px-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">+ $5</button>
+          <button onclick="simulateTip(25)" class="flex-1 py-1.5 px-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">+ $25</button>
+          <button onclick="simulateTip(50)" class="flex-1 py-1.5 px-2 bg-purple-600/80 hover:bg-purple-500 text-white rounded-lg font-bold text-xs transition">+ $50</button>
+          <button onclick="simulateTip(100)" class="flex-1 py-1.5 px-2 bg-pink-600/80 hover:bg-pink-500 text-white rounded-lg font-bold text-xs transition">+ $100</button>
+          <button onclick="resetCurrentProgress()" class="py-1.5 px-2.5 bg-red-600/60 hover:bg-red-500 text-white rounded-lg font-bold text-xs transition">Reset</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MAIN LIVE PREVIEW AREA -->
+    <div id="widget-wrapper" class="w-full lg:flex-1 max-w-xl transition-all duration-300 my-auto">
+      <div id="goal-card" class="glass-panel rounded-2xl p-6 transition-all duration-300">
+        
+        <!-- Header Summary -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse" id="live-indicator" title="Connected to StreamElements"></span>
+            <h2 id="disp-widget-title" class="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-md">
+              Stream Goal Milestones
+            </h2>
+          </div>
+          <div id="disp-percentage-badge" class="px-3 py-1 bg-white/10 rounded-full text-xs font-extrabold tracking-wider text-emerald-300 border border-emerald-500/30">
+            <span id="disp-current-total">$0.00</span> Raised
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar-container my-3 shadow-inner">
+          <div id="disp-bar-fill" class="progress-bar-fill w-0"></div>
+        </div>
+
+        <!-- Tip Notification Banner -->
+        <div id="tip-banner" class="hidden my-3 p-2.5 bg-gradient-to-r from-purple-900/90 to-pink-900/90 rounded-xl border border-pink-500/40 text-center animate-bounce">
+          <p class="text-xs font-semibold text-pink-200">
+            🎉 Latest Tip: <span id="tip-user" class="font-bold text-white">Viewer</span> donated <span id="tip-amount" class="font-bold text-emerald-300">$0.00</span>!
+          </p>
+        </div>
+
+        <!-- Multi-Tier Goal Checklist Display -->
+        <div class="mt-4">
+          <p class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Milestones Checklist</p>
+          <div id="milestones-list" class="space-y-2.5">
+            <!-- Dynamic Goals Rendered Here -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ===================================================================
+       APPLICATION STATE & DEFAULT GOALS
+       =================================================================== */
+    let widgetState = {
+      title: "Stream Goal Milestones",
+      currentAmount: 120.00,
+      gradStart: "#7928ca",
+      gradEnd: "#ff0080",
+      strikeColor: "#ef4444",
+      cardBg: "#12121a",
+      fontFamily: "'Montserrat', sans-serif",
+      height: 20,
+      milestones: [
+        { id: 1, target: 50, title: "New Gaming Mouse", reached: false },
+        { id: 2, target: 100, title: "Horror Game Night Stream", reached: false },
+        { id: 3, target: 200, title: "Stream Equipment Upgrade", reached: false },
+        { id: 4, target: 500, title: "Cosplay Stream & Giveaways", reached: false }
+      ]
+    };
+
+    let audioCtx = null;
+
+    /* ===================================================================
+       STREAMELEMENTS REAL-TIME LISTENER
+       =================================================================== */
+    window.addEventListener('onWidgetLoad', function (obj) {
+      const detail = obj.detail;
+      const fieldData = detail.fieldData || {};
+      
+      const indicator = document.getElementById('live-indicator');
+      if (indicator) {
+        indicator.classList.remove('bg-amber-400');
+        indicator.classList.add('bg-emerald-400');
+        indicator.title = "Connected to StreamElements API";
+      }
+
+      if (fieldData.widgetTitle) widgetState.title = fieldData.widgetTitle;
+
+      if (detail.session && detail.session.data) {
+        const sessionData = detail.session.data;
+        if (sessionData['tip-goal'] && sessionData['tip-goal'].amount) {
+          widgetState.currentAmount = parseFloat(sessionData['tip-goal'].amount);
+        } else if (sessionData['tip-total'] && sessionData['tip-total'].amount) {
+          widgetState.currentAmount = parseFloat(sessionData['tip-total'].amount);
+        }
+      }
+
+      renderEditorMilestoneList();
+      renderWidget();
+    });
+
+    window.addEventListener('onEventReceived', function (obj) {
+      if (!obj || !obj.detail) return;
+      const detail = obj.detail;
+      const listener = detail.listener;
+      const event = detail.event;
+
+      if ((listener === 'tip-latest' || listener === 'cheer-latest') && event) {
+        const amount = parseFloat(event.amount || 0);
+        const name = event.name || "Anonymous";
+        handleNewTip(amount, name);
+      }
+    });
+
+    /* ===================================================================
+       PROGRESS & GOAL LOGIC
+       =================================================================== */
+    function handleNewTip(amount, username) {
+      if (isNaN(amount) || amount <= 0) return;
+
+      widgetState.currentAmount += amount;
+      showTipBanner(username, amount);
+      playTipSound();
+
+      checkMilestonesProgress();
+      renderWidget();
+    }
+
+    function checkMilestonesProgress() {
+      let newlyPassed = false;
+
+      widgetState.milestones.forEach(m => {
+        if (widgetState.currentAmount >= m.target && !m.reached) {
+          m.reached = true;
+          newlyPassed = true;
+        } else if (widgetState.currentAmount < m.target && m.reached) {
+          m.reached = false;
+        }
+      });
+
+      if (newlyPassed) {
+        triggerMilestoneCelebration();
+      }
+    }
+
+    function simulateTip(amount) {
+      const names = ["PixelKing", "StreamFan99", "GamerGirl_X", "SubSupporter", "CryptoDonator"];
+      const randName = names[Math.floor(Math.random() * names.length)];
+      handleNewTip(amount, randName);
+    }
+
+    function resetCurrentProgress() {
+      widgetState.currentAmount = 0;
+      widgetState.milestones.forEach(m => m.reached = false);
+      renderWidget();
+    }
+
+    function showTipBanner(username, amount) {
+      const banner = document.getElementById('tip-banner');
+      document.getElementById('tip-user').innerText = username;
+      document.getElementById('tip-amount').innerText = '$' + amount.toFixed(2);
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 5000);
+    }
+
+    function triggerMilestoneCelebration() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      }
+      playCelebrationFanfare();
+    }
+
+    /* ===================================================================
+       AUDIO SYNTHESIZER
+       =================================================================== */
+    function initAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTipSound() {
+      try {
+        initAudioContext();
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } catch (e) {}
+    }
+
+    function playCelebrationFanfare() {
+      try {
+        initAudioContext();
+        if (!audioCtx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const now = audioCtx.currentTime + (idx * 0.1);
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        });
+      } catch (e) {}
+    }
+
+    /* ===================================================================
+       OBS LINK GENERATOR & URL PARAMETER ENGINE
+       =================================================================== */
+    function generateOBSLink() {
+      const baseUrl = window.location.origin + window.location.pathname;
+      const statePayload = {
+        t: widgetState.title,
+        m: widgetState.milestones.map(m => ({ t: m.target, title: m.title })),
+        gs: widgetState.gradStart,
+        ge: widgetState.gradEnd,
+        sc: widgetState.strikeColor,
+        bg: widgetState.cardBg,
+        f: widgetState.fontFamily,
+        h: widgetState.height,
+        ca: widgetState.currentAmount
+      };
+
+      const encoded = btoa(encodeURIComponent(JSON.stringify(statePayload)));
+      const obsUrl = `${baseUrl}?obs=true&cfg=${encoded}`;
+      
+      const inputEl = document.getElementById('obs-generated-url');
+      if (inputEl) inputEl.value = obsUrl;
+      return obsUrl;
+    }
+
+    function parseURLParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('obs') === 'true') {
+        document.body.classList.add('obs-mode');
+        const controlPanel = document.getElementById('control-panel');
+        if (controlPanel) controlPanel.classList.add('hidden');
+        
+        const wrapper = document.getElementById('widget-wrapper');
+        if (wrapper) {
+          wrapper.classList.remove('max-w-xl');
+          wrapper.classList.add('w-full', 'p-2');
+        }
+      }
+
+      const cfgData = urlParams.get('cfg');
+      if (cfgData) {
+        try {
+          const decoded = JSON.parse(decodeURIComponent(atob(cfgData)));
+          if (decoded.t) widgetState.title = decoded.t;
+          if (decoded.gs) widgetState.gradStart = decoded.gs;
+          if (decoded.ge) widgetState.gradEnd = decoded.ge;
+          if (decoded.sc) widgetState.strikeColor = decoded.sc;
+          if (decoded.bg) widgetState.cardBg = decoded.bg;
+          if (decoded.f) widgetState.fontFamily = decoded.f;
+          if (decoded.h) widgetState.height = decoded.h;
+          if (decoded.ca !== undefined) widgetState.currentAmount = decoded.ca;
+
+          if (Array.isArray(decoded.m)) {
+            widgetState.milestones = decoded.m.map((item, idx) => ({
+              id: idx + 1,
+              target: item.t,
+              title: item.title,
+              reached: false
+            }));
+          }
+        } catch (e) {
+          console.error("Failed to parse URL config payload", e);
+        }
+      }
+    }
+
+    function copyOBSLink() {
+      const url = generateOBSLink();
+      
+      const tempInput = document.createElement("input");
+      tempInput.value = url;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempInput);
+
+      const toast = document.getElementById('toast-message');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    function openOBSLinkInNewTab() {
+      const url = generateOBSLink();
+      window.open(url, '_blank');
+    }
+
+    function exportConfigJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(widgetState, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "streamelements_goal_config.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importConfigJSON() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.readAsText(file, 'UTF-8');
+        reader.onload = readerEvent => {
+          try {
+            const parsed = JSON.parse(readerEvent.target.result);
+            if (parsed.milestones) {
+              widgetState = parsed;
+              renderEditorMilestoneList();
+              renderWidget();
+              generateOBSLink();
+            }
+          } catch (err) {
+            alert("Invalid JSON configuration file.");
+          }
+        };
+      };
+      input.click();
+    }
+
+    /* ===================================================================
+       DYNAMIC GOAL MANAGEMENT (ADD, EDIT, REORDER, REMOVE)
+       =================================================================== */
+    function renderEditorMilestoneList() {
+      const editorList = document.getElementById('editor-milestone-list');
+      if (!editorList) return;
+      editorList.innerHTML = '';
+
+      widgetState.milestones.forEach((m, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/10 text-xs';
+        
+        row.innerHTML = `
+          <!-- Order Handles -->
+          <div class="flex flex-col gap-0.5 text-[10px]">
+            <button onclick="moveMilestone(${idx}, -1)" ${idx === 0 ? 'disabled class="text-gray-600"' : 'class="text-gray-300 hover:text-white"'}>▲</button>
+            <button onclick="moveMilestone(${idx}, 1)" ${idx === widgetState.milestones.length - 1 ? 'disabled class="text-gray-600"' : 'class="text-gray-300 hover:text-white"'}>▼</button>
+          </div>
+
+          <!-- Target Amount Input -->
+          <div class="relative">
+            <span class="absolute left-2 top-1.5 text-gray-400 font-bold">$</span>
+            <input type="number" value="${m.target}" onchange="updateMilestoneItem(${idx}, 'target', this.value)" class="w-20 pl-5 pr-1 py-1 bg-black/60 border border-white/20 rounded text-white font-bold focus:outline-none focus:border-purple-400">
+          </div>
+
+          <!-- Goal Title Input -->
+          <input type="text" value="${m.title}" onchange="updateMilestoneItem(${idx}, 'title', this.value)" class="flex-1 bg-black/60 border border-white/20 rounded px-2 py-1 text-white focus:outline-none focus:border-purple-400" placeholder="Goal Title">
+
+          <!-- Remove Goal Button (Trash Icon) -->
+          <button onclick="removeMilestoneTier(${idx})" title="Remove Goal" class="p-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-200 rounded transition border border-red-500/30">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          </button>
+        `;
+        editorList.appendChild(row);
+      });
+    }
+
+    function updateMilestoneItem(index, key, val) {
+      if (key === 'target') widgetState.milestones[index].target = parseFloat(val) || 0;
+      if (key === 'title') widgetState.milestones[index].title = val;
+      
+      // Auto-sort goals by target amount
+      widgetState.milestones.sort((a, b) => a.target - b.target);
+      
+      renderEditorMilestoneList();
+      renderWidget();
+    }
+
+    function moveMilestone(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= widgetState.milestones.length) return;
+      
+      const temp = widgetState.milestones[index];
+      widgetState.milestones[index] = widgetState.milestones[newIndex];
+      widgetState.milestones[newIndex] = temp;
+
+      renderEditorMilestoneList();
+      renderWidget();
+    }
+
+    function addNewMilestoneTier() {
+      const lastTarget = widgetState.milestones.length > 0 
+        ? widgetState.milestones[widgetState.milestones.length - 1].target + 100 
+        : 100;
+      
+      widgetState.milestones.push({
+        id: Date.now(),
+        target: lastTarget,
+        title: "New Goal Item",
+        reached: false
+      });
+
+      widgetState.milestones.sort((a, b) => a.target - b.target);
+
+      renderEditorMilestoneList();
+      renderWidget();
+    }
+
+    function removeMilestoneTier(index) {
+      widgetState.milestones.splice(index, 1);
+      renderEditorMilestoneList();
+      renderWidget();
+    }
+
+    /* ===================================================================
+       UI & RENDERING ENGINE
+       =================================================================== */
+    function renderWidget() {
+      checkMilestonesProgress();
+
+      widgetState.milestones.sort((a, b) => a.target - b.target);
+
+      const maxTarget = widgetState.milestones.length > 0 
+        ? widgetState.milestones[widgetState.milestones.length - 1].target 
+        : 100;
+
+      const rawPercentage = (widgetState.currentAmount / maxTarget) * 100;
+      const cappedPercentage = Math.min(100, Math.max(0, rawPercentage));
+
+      document.getElementById('disp-widget-title').innerText = widgetState.title;
+      document.getElementById('disp-current-total').innerText = '$' + widgetState.currentAmount.toFixed(2);
+      document.getElementById('disp-bar-fill').style.width = cappedPercentage + '%';
+
+      const root = document.documentElement;
+      root.style.setProperty('--bar-grad-start', widgetState.gradStart);
+      root.style.setProperty('--bar-grad-end', widgetState.gradEnd);
+      root.style.setProperty('--strike-color', widgetState.strikeColor);
+      root.style.setProperty('--card-bg', widgetState.cardBg);
+      root.style.setProperty('--font-family', widgetState.fontFamily);
+      root.style.setProperty('--bar-height', widgetState.height + 'px');
+
+      const listContainer = document.getElementById('milestones-list');
+      listContainer.innerHTML = '';
+
+      let foundNextActive = false;
+
+      widgetState.milestones.forEach(m => {
+        const isPassed = widgetState.currentAmount >= m.target;
+        let isNextActive = false;
+
+        if (!isPassed && !foundNextActive) {
+          isNextActive = true;
+          foundNextActive = true;
+        }
+
+        const tierProgressPct = Math.min(100, Math.max(0, (widgetState.currentAmount / m.target) * 100));
+
+        const itemEl = document.createElement('div');
+        itemEl.className = `milestone-item glass-panel p-3 rounded-xl flex items-center justify-between border ${
+          isPassed ? 'completed' : isNextActive ? 'active-next' : 'border-white/10'
+        }`;
+
+        itemEl.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
+              isPassed ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/40' : isNextActive ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-400'
+            }">
+              ${isPassed ? '✓' : '$'}
+            </div>
+            <div>
+              <p class="milestone-title font-bold text-sm text-white">${m.title}</p>
+              <p class="text-xs text-gray-400 font-medium">${
+                isPassed ? 'Goal Passed!' : '$' + widgetState.currentAmount.toFixed(2) + ' / $' + m.target.toFixed(2) + ' (' + tierProgressPct.toFixed(0) + '%)'
+              }</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-black tracking-wider px-2.5 py-1 rounded-lg ${
+              isPassed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-white/5 text-gray-300'
+            }">
+              $${m.target}
+            </span>
+          </div>
+        `;
+
+        listContainer.appendChild(itemEl);
+      });
+
+      generateOBSLink();
+    }
+
+    function updateWidgetConfig() {
+      widgetState.title = document.getElementById('cfg-widget-title').value || "Milestones";
+      widgetState.fontFamily = document.getElementById('cfg-font').value;
+      widgetState.gradStart = document.getElementById('cfg-grad-start').value;
+      widgetState.gradEnd = document.getElementById('cfg-grad-end').value;
+      widgetState.strikeColor = document.getElementById('cfg-strike-color').value;
+      widgetState.cardBg = document.getElementById('cfg-card-bg').value;
+      widgetState.height = parseInt(document.getElementById('cfg-height').value) || 20;
+
+      renderWidget();
+    }
+
+    function switchTab(tabName) {
+      ['goals', 'link', 'style'].forEach(t => {
+        document.getElementById(`tab-content-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).classList.remove('active');
+      });
+      document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+    }
+
+    function toggleOBSMode() {
+      const panel = document.getElementById('control-panel');
+      panel.classList.toggle('hidden');
+      document.body.classList.toggle('obs-mode');
+    }
+
+    window.onload = function() {
+      parseURLParams();
+      renderEditorMilestoneList();
+      renderWidget();
+
+      document.body.addEventListener('click', function() {
+        initAudioContext();
+      }, { once: true });
+    };
+  </script>
+</body>
+</html>
