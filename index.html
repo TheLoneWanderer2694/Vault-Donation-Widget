@@ -12,6 +12,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Montserrat:wght@500;700;800;900&family=Poppins:wght@500;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
   <!-- Canvas Confetti Library -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- QRCode.js Library for real scannable QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     :root {
@@ -324,8 +326,10 @@
               <p id="disp-cashapp-tag" class="text-sm font-black text-white font-mono">$YourCashtag</p>
             </div>
           </div>
-          <div class="bg-black/50 px-3 py-1.5 rounded-lg border border-emerald-500/30 text-[11px] font-bold text-emerald-300 tracking-wider">
-            SCAN / PAY
+          <!-- Scannable QR Container -->
+          <div id="cashapp-qr-box" class="bg-white p-1.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center transition hover:scale-105" title="Click to expand QR Code">
+            <!-- QR Code generated dynamically by qrcode.js -->
+            <div id="qrcode-container" class="w-12 h-12 flex items-center justify-center"></div>
           </div>
         </div>
 
@@ -638,7 +642,7 @@
               generateOBSLink();
             }
           } catch (err) {
-            alert("Invalid JSON configuration file.");
+            console.error("Invalid JSON configuration file.");
           }
         };
       };
@@ -746,6 +750,8 @@
     /* ===================================================================
        UI & RENDERING ENGINE
        =================================================================== */
+    let qrCodeInstance = null;
+
     function renderWidget() {
       checkMilestonesProgress();
 
@@ -766,7 +772,7 @@
       if (totalEl) totalEl.innerText = '$' + widgetState.currentAmount.toFixed(2);
       if (fillEl) fillEl.style.width = cappedPercentage + '%';
 
-      // CashApp Banner rendering
+      // CashApp Banner rendering & real QR code generation
       const cashAppBanner = document.getElementById('cashapp-banner');
       if (cashAppBanner) {
         if (widgetState.cashAppEnabled) {
@@ -774,9 +780,28 @@
           const textEl = document.getElementById('disp-cashapp-text');
           const tagEl = document.getElementById('disp-cashapp-tag');
           if (textEl) textEl.innerText = widgetState.cashAppText || "Support via CashApp";
-          let tag = widgetState.cashAppTag || "YourCashtag";
-          if (!tag.startsWith('$')) tag = '$' + tag;
-          if (tagEl) tagEl.innerText = tag;
+          let cleanTag = (widgetState.cashAppTag || "YourCashtag").trim();
+          if (cleanTag.startsWith('$')) cleanTag = cleanTag.substring(1);
+          if (tagEl) tagEl.innerText = '$' + cleanTag;
+
+          // Render real scannable QR code linking directly to CashApp profile
+          const qrContainer = document.getElementById('qrcode-container');
+          if (qrContainer) {
+            qrContainer.innerHTML = '';
+            const cashAppUrl = `https://cash.app/$${cleanTag}`;
+            try {
+              new QRCode(qrContainer, {
+                text: cashAppUrl,
+                width: 48,
+                height: 48,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.L
+              });
+            } catch (e) {
+              qrContainer.innerHTML = '<span class="text-[10px] text-black font-bold">QR</span>';
+            }
+          }
         } else {
           cashAppBanner.classList.add('hidden');
         }
@@ -867,7 +892,7 @@
       renderWidget();
     }
 
-    window.onload = function() {
+    window.addEventListener('DOMContentLoaded', () => {
       parseURLParams();
       syncInputsFromState();
       renderEditorMilestoneList();
@@ -876,7 +901,7 @@
       document.body.addEventListener('click', function() {
         initAudioContext();
       }, { once: true });
-    };
+    });
   </script>
 </body>
 </html>
